@@ -2,20 +2,28 @@ import os
 import chromadb
 from chromadb.config import Settings
 
+def _clean_host(raw: str) -> str:
+    if not raw:
+        return raw
+    return raw.replace("http://", "").replace("https://", "").rstrip("/")
+
 class VectorORM:
     def __init__(self):
-        CHROMA_HOST = os.getenv("CHROMA_HOST")              # e.g. chromatushar.railway.internal
-        CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8000")) # Railway internal port
+        # Expect these to be set in Railway variables:
+        # CHROMA_HOST=chromatushar.railway.internal
+        # CHROMA_PORT=8000
+        raw_host = os.getenv("CHROMA_HOST", "chromatushar.railway.internal")
+        CHROMA_HOST = _clean_host(raw_host)
+        CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8000"))
 
-        # Use ChromaDB v2 REST API client
-        self.client = chromadb.Client(
-            Settings(
-                chroma_api_impl="rest",
-                chroma_server_host=CHROMA_HOST,
-                chroma_server_http_port=CHROMA_PORT,
-                ssl_enabled=False      # Railway internal network --> NO SSL
-            )
+        # Use the v2 REST client settings — DO NOT pass ssl_enabled (invalid)
+        settings = Settings(
+            chroma_api_impl="rest",
+            chroma_server_host=CHROMA_HOST,
+            chroma_server_http_port=CHROMA_PORT,
         )
+
+        self.client = chromadb.Client(settings)
 
         self.predefined = "predefined_context"
         self.user_history = "user_history"
@@ -40,8 +48,4 @@ class VectorORM:
 
     def search(self, collection, embedding, limit=4):
         col = self.client.get_collection(collection)
-        results = col.query(
-            query_embeddings=[embedding],
-            n_results=limit
-        )
-        return results
+        return col.query(query_embeddings=[embedding], n_results=limit)
