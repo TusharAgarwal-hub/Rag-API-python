@@ -1,21 +1,67 @@
-# Environment files (sensitive API keys, credentials)
+# =========================================
+# Python
+# =========================================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environments
+venv/
+env/
+.venv/
+
+# Environment Files
 .env
 *.env
-venv/
-# RAG-specific artifacts (vector stores, processed documents)
-# Modify these paths based on your project's specific directory structure
+
+# =========================================
+# Project-Specific (RAG / Chroma / Embeddings)
+# =========================================
+
+# Local vector stores (do NOT include these in git)
 vector_store/
-vector_db/
+
+# Ignore only data files inside vector_db, keep Python modules
+vector_db/*.db
+vector_db/*.json
+vector_db/*.parquet
+vector_db/*.sqlite
+vector_db/*.sqlite3
+
+# ChromaDB / Embedding DB files
 chroma_db/
-index_data/
+*.duckdb
+*.parquet
+
+# Data folders for documents (raw / processed)
 documents/
 source_docs/
 processed_data/
+index_data/
 
-# Log files
+# =========================================
+# Logs
+# =========================================
 *.log
+logs/
+*.out
 
-# Database files (if using local development DBs)
-*.sqlite
-*.sqlite3
-db.sqlite3
+# =========================================
+# OS-Specific
+# =========================================
+.DS_Store
+Thumbs.db
+
+# =========================================
+# Editors / IDEs
+# =========================================
+.vscode/
+.idea/
+
+# =========================================
+# Docker
+# =========================================
+*.pid
+*.tar
+docker-compose.override.yml

@@ -19,4 +19,6 @@ requests==2.31.0
 
 # Optional (logging, JSON handling)
 python-dotenv==1.0.1
-orjson==3.10.7
+
+
+chromadb==0.5.4
