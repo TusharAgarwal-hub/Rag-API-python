@@ -5,7 +5,7 @@ from app.config import settings
 genai.configure(api_key=settings.GEMINI_API_KEY)
 
 class GeminiClient:
-    def __init__(self, model="gemini-2.5-flash"):
+    def __init__(self, model="models/gemini-2.0-flash"):
         self.model = model
 
     def generate(self, prompt: str):

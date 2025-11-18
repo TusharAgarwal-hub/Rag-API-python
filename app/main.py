@@ -43,12 +43,3 @@ def run_rag(request: RAGRequest):
 
     return output
 
-
-@app.get("/chroma-test")
-def chroma_test():
-    try:
-        collections = [c.name for c in vector_orm.client.list_collections()]
-        return {"status": "connected", "collections": collections}
-    except Exception as e:
-        return {"status": "error", "detail": str(e)}
-

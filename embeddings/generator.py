@@ -1,20 +1,15 @@
-# embeddings/generator.py
-import google.generativeai as genai
-from app.config import settings
-
-genai.configure(api_key=settings.GEMINI_API_KEY)
+from transformers import AutoTokenizer, AutoModel
+import torch
 
 class EmbeddingGenerator:
-    def __init__(self, model="text-embedding-004"):
-        self.model = model
+    def __init__(self):
+        self.model_name = "BAAI/bge-small-en-v1.5"
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        self.model = AutoModel.from_pretrained(self.model_name)
 
     def create_embedding(self, text: str):
-        if not text or text.strip() == "":
-            return None
-        
-        embedding = genai.embed_content(
-            model=self.model,
-            content=text,
-            task_type="retrieval_document"
-        )
-        return embedding['embedding']
+        inputs = self.tokenizer(text, return_tensors="pt", truncation=True)
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+            embeddings = outputs.last_hidden_state[:, 0, :]  # CLS token
+        return embeddings[0].tolist()

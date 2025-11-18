@@ -1,29 +1,25 @@
 import os
-import chromadb
-from chromadb.config import Settings
+import uuid
+from dotenv import load_dotenv
+from qdrant_client import QdrantClient
+from qdrant_client.models import (
+    VectorParams,
+    Distance,
+    PointStruct,
+    Filter,
+    FieldCondition,
+    MatchValue
+)
 
-def _clean_host(raw: str) -> str:
-    if not raw:
-        return raw
-    return raw.replace("http://", "").replace("https://", "").rstrip("/")
+load_dotenv()
 
 class VectorORM:
     def __init__(self):
-        # Expect these to be set in Railway variables:
-        # CHROMA_HOST=chromatushar.railway.internal
-        # CHROMA_PORT=8000
-        raw_host = os.getenv("CHROMA_HOST", "chromatushar.railway.internal")
-        CHROMA_HOST = _clean_host(raw_host)
-        CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8000"))
-
-        # Use the v2 REST client settings — DO NOT pass ssl_enabled (invalid)
-        settings = Settings(
-            chroma_api_impl="rest",
-            chroma_server_host=CHROMA_HOST,
-            chroma_server_http_port=CHROMA_PORT,
+        self.client = QdrantClient(
+            url=os.getenv("QDRANT_URL"),
+            api_key=os.getenv("QDRANT_API_KEY"),
+            prefer_grpc=False
         )
-
-        self.client = chromadb.Client(settings)
 
         self.predefined = "predefined_context"
         self.user_history = "user_history"
@@ -34,18 +30,62 @@ class VectorORM:
     def _ensure_collection(self, name):
         try:
             self.client.get_collection(name)
-        except Exception:
-            self.client.create_collection(name=name)
+        except:
+            self.client.create_collection(
+                collection_name=name,
+                vectors_config=VectorParams(
+                    size=int(os.getenv("EMBEDDING_DIM", "384")),
+                    distance=Distance.COSINE
+                ),
+                on_disk_payload=True
+            )
+
+            # *** FIX: Create index for user_id ***
+            self.client.create_payload_index(
+                collection_name=name,
+                field_name="user_id",
+                field_schema="keyword"
+            )
 
     def insert(self, collection, text, embedding, metadata):
-        col = self.client.get_collection(collection)
-        col.add(
-            ids=[metadata["id"]],
-            embeddings=[embedding],
-            documents=[text],
-            metadatas=[metadata],
+        point = PointStruct(
+            id=metadata["id"],
+            vector=embedding,
+            payload={
+                "text": text,
+                "user_id": metadata.get("user_id"),
+                **metadata
+            }
         )
 
-    def search(self, collection, embedding, limit=4):
-        col = self.client.get_collection(collection)
-        return col.query(query_embeddings=[embedding], n_results=limit)
+        self.client.upsert(
+            collection_name=collection,
+            points=[point]
+        )
+
+    def search(self, collection, embedding, limit=4, user_id=None):
+        q_filter = None
+        if user_id:
+            q_filter = Filter(
+                must=[
+                    FieldCondition(
+                        key="user_id",
+                        match=MatchValue(value=user_id)
+                    )
+                ]
+            )
+
+        results = self.client.search(
+            collection_name=collection,
+            query_vector=embedding,
+            limit=limit,
+            query_filter=q_filter
+        )
+
+        documents = [[r.payload.get("text") for r in results]]
+        distances = [[1 - r.score for r in results]]
+
+        return {
+            "documents": documents,
+            "distances": distances
+        }
