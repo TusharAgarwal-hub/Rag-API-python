@@ -20,5 +20,6 @@ requests==2.31.0
 # Optional (logging, JSON handling)
 python-dotenv==1.0.1
 
-
-chromadb==0.5.4
+transformers==4.36.2
+sentence-transformers==2.2.2
+torch
